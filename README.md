@@ -27,6 +27,67 @@ The primary objective of this analysis is to understand and optimize the sign-up
 - **Query Language**: SQL
 - **Visualization**: Tableau
 ---
+## Business Questions:
+1- What is the total number of vistitors, registered users, and free registered users?
+```sql
+use signup_flow;
+with total_visitors as(
+select 
+    v.visitor_id, 
+    v.first_visit_date,
+    s.date_registered as registration_date,
+    p.purchase_date
+from
+    visitors as v
+left join
+    students as s on v.user_id = s.user_id
+left  join
+    student_purchases as p on v.user_id = p.user_id
+group by visitor_id
+    ),
+count_visitors as 
+(
+select 
+    first_visit_date as date_session ,
+    count(*) as count_total_visitors
+from 
+    total_visitors
+group by date_session
+    ),
+count_registered as 
+(
+	select first_visit_date as date_session ,
+    count(*) as count_registered 
+    from 
+    total_visitors
+    where registration_date is not null
+    group by date_session
+    ), count_registered_free as 
+     (
+    select first_visit_date as date_session ,
+    count(*) as count_registered_free
+    from 
+    total_visitors
+    where registration_date is not null
+    and(purchase_date is null
+    or timestampdiff(minute, registration_date , purchase_date) > 30)
+    group by date_session
+    )
+
+select
+v.date_session as date_session,
+v.count_total_visitors,
+ifnull(r.count_registered, 0) as count_registered ,
+ifnull(fr.count_registered_free, 0) as free_registered_users
+from 
+count_visitors v
+left join
+count_registered r on v.date_session = r.date_session
+left join 
+count_registered_free fr on v.date_session = fr.date_session
+where v.date_session <'2023-02-01'
+order by v.date_session ;
+```
 ## 📊 **Key Insights** (To Be Updated)
 - The **conversion rate** from visitors to registered users is **X%**.
 - The total number of **registered users** over the observed period is **Y**.
